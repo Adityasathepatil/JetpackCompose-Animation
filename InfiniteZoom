@@ -1,0 +1,46 @@
+@Composable
+fun ImageZoom() {
+    var scale by remember { mutableStateOf(1f) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTransformGestures { _, _, zoom, _ ->
+                    scale = max(0.1f, min(10f, scale * zoom))
+                }
+            }
+            .graphicsLayer(
+                scaleX = scale,
+                scaleY = scale
+            )
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.img),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+
+private suspend fun PointerInputScope.detectTransformGestures(
+    onGesture: (centroid: Offset, pan: Offset, zoom: Float, rotation: Float) -> Unit
+) {
+    forEachGesture {
+        awaitPointerEventScope {
+            var zoom = 1f
+
+            do {
+                val event = awaitPointerEvent()
+                val zoomChange = event.calculateZoom()
+                zoom *= zoomChange
+
+                if (event.changes.all { it.pressed }) {
+                    onGesture(Offset.Zero, Offset.Zero, zoomChange, 0f)
+                }
+
+            } while (event.changes.any { it.pressed })
+        }
+    }
+}
